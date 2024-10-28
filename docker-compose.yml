@@ -3,6 +3,7 @@ services:
     build: .
     pull_policy: build
     container_name: volume_backup
+    restart: unless-stopped
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
