@@ -65,7 +65,8 @@ cleanup_old_backups() {
     echo "Old backups cleaned up, older than ${RETENTION_DAYS} days"
 }
 
-echo "${BACKUP_SCHEDULE} /bin/sh /backup-script.sh backup" > /etc/crontabs/root
+crontab -l | grep -v '/backup-script.sh' | crontab -
+echo "${BACKUP_SCHEDULE} /bin/sh /backup-script.sh backup" | crontab -
 crond -f -d 8 &
 
 if [ "$1" = "backup" ]; then
