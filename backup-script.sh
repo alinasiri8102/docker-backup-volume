@@ -54,7 +54,7 @@ backup_volumes() {
     gzip "$ARCHIVE_FILE"
     echo "Compressed $ARCHIVE_FILE to ${ARCHIVE_FILE}.gz"
 
-    send_telegram "$ARCHIVE_FILE"
+    send_telegram "${ARCHIVE_FILE}.gz"
 }
 
 cleanup_old_backups() {
