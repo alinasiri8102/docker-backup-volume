@@ -5,7 +5,7 @@ mkdir -p "$BACKUP_DIR"
 
 DATE=$(date +"%Y-%m-%d_%H-%M-%S")
 RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
-ARCHIVE_FILE="${BACKUP_DIR}/Backup_${DATE}.tar.gz"
+
 
 send_telegram() {
     local archive_file=$1
@@ -28,7 +28,8 @@ send_telegram() {
 
 backup_volumes() {
     volumes=$(docker volume ls -q)
-
+    ARCHIVE_FILE="${BACKUP_DIR}/Backup_${DATE}.tar.gz"
+    
     for volume in $volumes; do
         if [ "$volume" = "backup-service_data" ]; then
             echo "Skipping backup for volume $volume."
@@ -37,7 +38,7 @@ backup_volumes() {
 
         BACKUP_FILE="${BACKUP_DIR}/backup_${volume}_${DATE}.tar.gz"
         
-        docker run --rm -v "$volume":/volume -v backup-service_data:/backup alpine \
+        docker run --rm -v "$volume":/volume -v backup-service_data:/backup alpine:latest \
             /bin/sh -c "cd /volume && tar -czf /backup/$(basename "$BACKUP_FILE") ."
 
         if [ ! -f "$BACKUP_FILE" ]; then
@@ -68,6 +69,7 @@ cleanup_old_backups() {
 crontab -l | grep -v '/backup-script.sh' | crontab -
 echo "${BACKUP_SCHEDULE} /bin/sh /backup-script.sh backup" | crontab -
 crond -f -d 8 &
+
 
 if [ "$1" = "backup" ]; then
     backup_volumes
