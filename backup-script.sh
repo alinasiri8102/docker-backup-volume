@@ -28,7 +28,7 @@ send_telegram() {
 
 backup_volumes() {
     volumes=$(docker volume ls -q)
-    ARCHIVE_FILE="${BACKUP_DIR}/Backup_${DATE}.tar.gz"
+    ARCHIVE_FILE="${BACKUP_DIR}/FullBackup_${DATE}.tar"
     
     for volume in $volumes; do
         if [ "$volume" = "backup-service_data" ]; then
@@ -51,12 +51,8 @@ backup_volumes() {
         tar -rf "$ARCHIVE_FILE" -C "$BACKUP_DIR" "$(basename "$BACKUP_FILE")"
     done
 
-    if [ ! -f "${ARCHIVE_FILE}.gz" ]; then
-        gzip "$ARCHIVE_FILE"
-        echo "Compressed $ARCHIVE_FILE to ${ARCHIVE_FILE}.gz"
-    else
-        echo "$ARCHIVE_FILE has already been compressed."
-    fi
+    gzip "$ARCHIVE_FILE"
+    echo "Compressed $ARCHIVE_FILE to ${ARCHIVE_FILE}.gz"
 
     send_telegram "$ARCHIVE_FILE"
 }
