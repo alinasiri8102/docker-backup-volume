@@ -30,12 +30,13 @@ This Docker service automates the process of backing up Docker volumes. It creat
 
 ## Environment Variables
 
-| Variable                | Description                                                                                                                                                 |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `TELEGRAM_BOT_TOKEN`    | The authentication token for your Telegram bot. You can obtain this token by creating a new bot with [BotFather](https://core.telegram.org/bots#botfather). |
-| `TELEGRAM_CHAT_ID`      | The chat ID where backup notifications will be sent. You can get this ID by messaging your bot and checking the response.                                   |
-| `BACKUP_SCHEDULE`       | The cron schedule for automated backup execution (in UTC). For example, `"0 2,6 * * *"` runs backups daily at 2 AM and 6 AM.                                |
-| `BACKUP_RETENTION_DAYS` | The number of days to retain backups before deletion. For example, if set to `3`, backups older than 3 days will be automatically removed.                  |
+| Variable                | Description                                                                                                                                                      |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TELEGRAM_BOT_TOKEN`    | The authentication token for your Telegram bot. You can obtain this token by creating a new bot with [BotFather](https://core.telegram.org/bots#botfather).      |
+| `TELEGRAM_CHAT_ID`      | The chat ID where backup file will be sent. You can get this ID by messaging your bot and checking the response.                                                 |
+| `TELEGRAM_THREAD_ID`    | Optional. The message thread ID for sending the backup file to a specific thread in a group chat. If not set, the message will be sent to the main chat.         |
+| `BACKUP_SCHEDULE`       | The cron schedule for automated backup execution (in UTC). For example, `"0 2,6 * * *"` runs backups daily at 2 AM and 6 AM.                                     |
+| `BACKUP_RETENTION_DAYS` | The number of days to retain backups before deletion. For example, if set to `3`, backups older than 3 days will be automatically removed. Default is `14` days. |
 
 ## Backup Process
 

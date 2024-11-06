@@ -9,10 +9,16 @@ RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
 send_telegram() {
     local archive_file=$1
     if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
-        response=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
-            -F chat_id="${TELEGRAM_CHAT_ID}" \
-            -F document="@$archive_file" \
-            -F caption="📌 $DATE")
+        curl_cmd=(
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument"
+            -F chat_id="${TELEGRAM_CHAT_ID}"
+            -F document="@$archive_file"
+            -F caption="📌 $DATE"
+        ) 
+        if [ -n "$TELEGRAM_THREAD_ID" ]; then
+            curl_cmd+=(-F message_thread_id="${TELEGRAM_THREAD_ID}")
+        fi
+        response=$("${curl_cmd[@]}")
         if echo "$response" | grep -q '"ok":true'; then
             echo "Backup successfully sent to Telegram."
         else
