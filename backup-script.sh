@@ -6,14 +6,11 @@ mkdir -p "$BACKUP_DIR"
 DATE=$(date +"%Y-%m-%d_%H-%M-%S")
 RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
 
-
 send_telegram() {
     local archive_file=$1
-    
     if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
         response=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
             -F chat_id="${TELEGRAM_CHAT_ID}" \
-            -F message_thread_id="${TELEGRAM_THREAD_ID}" \
             -F document="@$archive_file" \
             -F caption="📌 $DATE")
         if echo "$response" | grep -q '"ok":true'; then
@@ -62,17 +59,22 @@ cleanup_old_backups() {
     echo "Old backups cleaned up, older than ${RETENTION_DAYS} days"
 }
 
-crontab -l | grep -v '/backup-script.sh' | crontab -
-echo "${BACKUP_SCHEDULE} /bin/sh /backup-script.sh backup" | crontab -
-crond -f -d 8 &
 
-
-if [ "$1" = "backup" ]; then
-    backup_volumes
-    cleanup_old_backups
+if [ -n "$BACKUP_SCHEDULE" ]; then
+    if ! crontab -l | grep -q '/backup-script.sh'; then
+        echo "${BACKUP_SCHEDULE} /bin/sh /backup-script.sh backup" | crontab -
+        echo "Backup schedule set to ${BACKUP_SCHEDULE}."
+    fi
 else
-    echo "Container started."
-    backup_volumes
-    echo "Waiting for cron schedule or manual backup trigger."
-    tail -f /dev/null
+    echo "Error: BACKUP_SCHEDULE environment variable is not set."
+    exit 1
 fi
+
+echo "Container started, taking initial backup..."
+backup_volumes
+cleanup_old_backups
+
+echo "Starting crond for scheduled backups..."
+crond -d 8
+
+tail -f /dev/null
