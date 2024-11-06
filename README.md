@@ -2,12 +2,12 @@
 
 ## Overview
 
-This Docker service automates the process of backing up Docker volumes. It creates compressed backups of the volumes, retains them for a specified number of days, and sends notifications via Telegram upon successful backup completion. This service is particularly useful for maintaining data integrity and ensuring that important data is not lost.
+This Docker service automates the process of backing up Docker volumes. It creates compressed backups of the volumes, retains them for a specified number of days, and sends an archive file containing all backups via Telegram upon successful backup completion. This service is particularly useful for maintaining data integrity and ensuring that important data is not lost.
 
 ## Features
 
 - Automated backups of Docker volumes.
-- Notification of backup completion sent to Telegram.
+- Send an archive containing all backups to Telegram.
 - Scheduled backups using Cron.
 - Retention policy to automatically delete old backups.
 
@@ -43,7 +43,15 @@ This Docker service automates the process of backing up Docker volumes. It creat
 - The backup script is executed based on the specified cron schedule.
 - Upon execution, all Docker volumes are backed up into a specified directory (`/backups`).
 - Each backup is compressed into a `.tar.gz` file and moved to the designated backup directory.
-- After successful backup creation, a notification with the backup details is sent to the specified Telegram chat.
+- After successful backup creation, the archive file with all backups is sent to the specified Telegram chat.
+
+### Backup Storage Location
+
+The backup files are stored locally at the following path:
+
+```bash
+/var/lib/docker/volumes/backup-service_data/_data
+```
 
 ## Cleanup Process
 
