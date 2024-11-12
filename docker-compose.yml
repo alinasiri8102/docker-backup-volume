@@ -18,5 +18,7 @@ services:
 
     network_mode: host
 
+    command: /bin/sh -c "/bin/sh /backup-script.sh && echo '${BACKUP_SCHEDULE} /bin/sh /backup-script.sh >> /var/log/cron.log 2>&1' > /etc/crontabs/root && crond -f -d 8"
+
 volumes:
   data:

@@ -29,12 +29,14 @@ send_telegram() {
 }
 
 backup_volumes() {
+    echo "Taking backups..."
+
     volumes=$(docker volume ls -q)
     ARCHIVE_FILE="${BACKUP_DIR}/FullBackup_${DATE}.tar"
     
     for volume in $volumes; do
         if [ "$volume" = "backup-service_data" ]; then
-            echo "Skipping backup for volume $volume."
+            echo "skipping backup for volume $volume."
             continue
         fi
 
@@ -44,17 +46,17 @@ backup_volumes() {
             /bin/sh -c "cd /volume && tar -czf /backup/$(basename "$BACKUP_FILE") ."
 
         if [ ! -f "$BACKUP_FILE" ]; then
-            echo "Backup file $BACKUP_FILE was not created. Skipping this volume."
+            echo "backup file $BACKUP_FILE was not created. Skipping this volume."
             continue
         fi
 
-        echo "Backup completed for volume ${volume}: ${BACKUP_FILE}"
+        echo "backup completed for volume ${volume}: ${BACKUP_FILE}"
 
         tar -rf "$ARCHIVE_FILE" -C "$BACKUP_DIR" "$(basename "$BACKUP_FILE")"
     done
 
     gzip "$ARCHIVE_FILE"
-    echo "Compressed $ARCHIVE_FILE to ${ARCHIVE_FILE}.gz"
+    echo "compressed $ARCHIVE_FILE to ${ARCHIVE_FILE}.gz"
 
     send_telegram "${ARCHIVE_FILE}.gz"
 }
@@ -64,22 +66,8 @@ cleanup_old_backups() {
     echo "Old backups cleaned up, older than ${RETENTION_DAYS} days"
 }
 
-
-if [ -n "$BACKUP_SCHEDULE" ]; then
-    if ! crontab -l | grep -q '/backup-script.sh'; then
-        echo "${BACKUP_SCHEDULE} /bin/sh /backup-script.sh backup" | crontab -
-        echo "Backup schedule set to ${BACKUP_SCHEDULE}."
-    fi
-else
-    echo "Error: BACKUP_SCHEDULE environment variable is not set."
-    exit 1
-fi
-
-echo "Container started, taking initial backup..."
+echo "SCRIPT STARTED ON ${DATE}"
 backup_volumes
 cleanup_old_backups
 
-echo "Starting crond for scheduled backups..."
-crond -d 8
 
-tail -f /dev/null
