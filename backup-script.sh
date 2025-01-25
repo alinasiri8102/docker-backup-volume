@@ -44,7 +44,7 @@ backup_volumes() {
         TMP_DIR="/tmp/${volume}_backup"
         mkdir -p "${TMP_DIR}/_data"
         
-        docker run --rm -v "$volume":/volume -v "$TMP_DIR/data":/backup alpine:latest \
+        docker run --rm -v "$volume":/volume -v "$TMP_DIR/ـdata":/backup alpine:latest \
             /bin/sh -c "cp -r /volume/* /backup/"
 
         if [ ! "$(ls -A ${TMP_DIR}/data)" ]; then
