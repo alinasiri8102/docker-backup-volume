@@ -43,7 +43,7 @@ backup_volumes() {
         BACKUP_FILE="${BACKUP_DIR}/${volume}.tar.gz"
 
         docker run --rm -v "${volume}:/volume" -v backup-service_data:/backup alpine:latest \
-            /bin/sh -c "tar -czf /backup/$(basename "$BACKUP_FILE") -C / volume"
+            /bin/sh -c "tar -czf /backup/_data/$(basename "$BACKUP_FILE")"
 
         if [ ! -f "$BACKUP_FILE" ]; then
             echo "backup file $BACKUP_FILE was not created. Skipping this volume."
