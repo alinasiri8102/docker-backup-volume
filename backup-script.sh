@@ -45,7 +45,7 @@ backup_volumes() {
         docker run --rm -v "$volume":/volume -v backup-service_data:/backup alpine:latest \
             /bin/sh -c "
                 mkdir -p /tmp_backup/${volume}/_data &&
-                cp -r /volume/* /tmp_backup/${volume}/_data &&
+                cp -r /volume/. /tmp_backup/${volume}/_data &&
                 cd /tmp_backup &&
                 tar -czf /backup/$(basename "$BACKUP_FILE") ${volume}
             "
