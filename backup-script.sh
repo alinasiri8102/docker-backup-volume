@@ -41,18 +41,31 @@ backup_volumes() {
         fi
 
         BACKUP_FILE="${BACKUP_DIR}/${volume}.tar.gz"
+        TMP_DIR="/tmp/${volume}_backup"
+        mkdir -p "${TMP_DIR}/_data"
+        
+        docker run --rm -v "$volume":/volume -v "$TMP_DIR/data":/backup alpine:latest \
+            /bin/sh -c "cp -r /volume/* /backup/"
 
-        docker run --rm -v "${volume}:/volume" -v backup-service_data:/backup alpine:latest \
-            /bin/sh -c "cd / && tar -czf /backup/$(basename "$BACKUP_FILE")/${volume}/_data"
+        if [ ! "$(ls -A ${TMP_DIR}/data)" ]; then
+            echo "No data found for volume $volume. Skipping backup."
+            rm -rf "$TMP_DIR"
+            continue
+        fi
+
+        tar -czf "$BACKUP_FILE" -C "/tmp" "$(basename "$TMP_DIR")"
 
         if [ ! -f "$BACKUP_FILE" ]; then
-            echo "backup file $BACKUP_FILE was not created. Skipping this volume."
+            echo "Backup file $BACKUP_FILE was not created. Skipping this volume."
+            rm -rf "$TMP_DIR"
             continue
         fi
 
         echo "backup completed for volume ${volume}: ${BACKUP_FILE}"
 
         tar -rf "$ARCHIVE_FILE" -C "$BACKUP_DIR" "$(basename "$BACKUP_FILE")"
+        
+        rm -rf "$TMP_DIR"
     done
 
     gzip "$ARCHIVE_FILE"
