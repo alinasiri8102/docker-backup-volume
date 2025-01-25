@@ -47,7 +47,7 @@ backup_volumes() {
         docker run --rm -v "$volume":/volume -v "$TMP_DIR/ـdata":/backup alpine:latest \
             /bin/sh -c "cp -r /volume/* /backup/"
 
-        if [ ! "$(ls -A ${TMP_DIR}/data)" ]; then
+        if [ ! "$(ls -A ${TMP_DIR}/ـdata)" ]; then
             echo "No data found for volume $volume. Skipping backup."
             rm -rf "$TMP_DIR"
             continue
