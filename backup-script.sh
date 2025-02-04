@@ -46,7 +46,7 @@ backup_volumes() {
     echo "Taking backups..."
 
     volumes=$(docker volume ls -q)
-    ARCHIVE_FILE="${BACKUP_DIR}/FullBackup_${DATE}.tar"
+    ARCHIVE_FILE="${BACKUP_DIR}/Backup_${DATE}.tar"
     
     for volume in $volumes; do
         if [ "$volume" = "backup-service_data" ]; then
