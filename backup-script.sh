@@ -9,7 +9,7 @@ RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
 send_telegram() {
     local archive_file=$1
     local max_size=$((49 * 1024 * 1024))  # 49MB max per part
-    local base_name=$(basename -- "$archive_file")
+    local base_name=$DATE
 
     if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
         echo "Telegram bot token or chat ID is missing. Skipping."
@@ -26,7 +26,7 @@ send_telegram() {
             curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
                 -F chat_id="$TELEGRAM_CHAT_ID" \
                 -F document="@$part" \
-                -F caption="📌 ${base_name} - $(basename "$part")" \
+                -F caption="📌 ${base_name} - ${$part}" \
                 ${TELEGRAM_THREAD_ID:+-F message_thread_id="$TELEGRAM_THREAD_ID"} > /dev/null
             rm -f "$part"
         done
