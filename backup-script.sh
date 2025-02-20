@@ -18,7 +18,7 @@ send_telegram() {
 
     file_size=$(wc -c < "$archive_file")
 
-    if (( file_size > max_size )); then
+    if [ "$file_size" -gt "$max_size" ]; then
         echo "File is larger than 50MB. Splitting..."
         split -b $max_size -d --additional-suffix=".part" "$archive_file" "${archive_file}."
 
