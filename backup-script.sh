@@ -16,7 +16,7 @@ send_telegram() {
         return
     fi
 
-    file_size=$(stat -c%s "$archive_file")
+    file_size=$(wc -c < "$archive_file")
 
     if (( file_size > max_size )); then
         echo "File is larger than 50MB. Splitting..."
@@ -26,7 +26,7 @@ send_telegram() {
             curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
                 -F chat_id="$TELEGRAM_CHAT_ID" \
                 -F document="@$part" \
-                -F caption="📌 ${base_name} - ${$part}" \
+                -F caption="📌 ${base_name} - ${part}" \
                 ${TELEGRAM_THREAD_ID:+-F message_thread_id="$TELEGRAM_THREAD_ID"} > /dev/null
             rm -f "$part"
         done
