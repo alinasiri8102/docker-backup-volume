@@ -20,7 +20,7 @@ send_telegram() {
 
     if [ "$file_size" -gt "$max_size" ]; then
         echo "File is larger than 50MB. Splitting..."
-        split -b $max_size -d --additional-suffix=".part" "$archive_file" "${archive_file}."
+        split -b $max_size -d --additional-suffix=".part" "$archive_file" "${archive_file}.part"
 
         for part in ${archive_file}.*.part; do
             curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
