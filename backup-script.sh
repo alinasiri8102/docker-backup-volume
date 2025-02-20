@@ -19,16 +19,18 @@ send_telegram() {
     file_size=$(wc -c < "$archive_file")
 
     if [ "$file_size" -gt "$max_size" ]; then
-        echo "File is larger than 50MB. Splitting..."
-        split -b $max_size -d --additional-suffix=".part" "$archive_file" "split_part_"
+        split -b $max_size -d --additional-suffix=".$(basename "$archive_file")" "$archive_file" "split_part_"
 
-        for part in split_part_*.part; do
-            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+        for part in split_part_*."$(basename "$archive_file")"; do
+            if curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
                 -F chat_id="$TELEGRAM_CHAT_ID" \
                 -F document="@$part" \
-                -F caption="📌 ${base_name}-$(basename "$part")"
-                ${TELEGRAM_THREAD_ID:+-F message_thread_id="$TELEGRAM_THREAD_ID"} > /dev/null
-            rm -f "$part"
+                -F caption="📌 ${base_name}-$(basename "$part")" \
+                ${TELEGRAM_THREAD_ID:+-F message_thread_id="$TELEGRAM_THREAD_ID"} > /dev/null; then
+                rm -f "$part"
+            else
+                echo "Failed to send $part!"
+            fi
         done
     else
         curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
