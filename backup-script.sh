@@ -61,14 +61,14 @@ backup_volumes() {
         zip -q "$ARCHIVE_FILE" "$BACKUP_FILE"
     done
 
-    echo "Created archive: $ARCHIVE_FILE"
+    echo "✅ Created archive: $ARCHIVE_FILE"
 
     send_telegram "$ARCHIVE_FILE"
 }
 
 cleanup_old_backups() {
     find "$BACKUP_DIR" -type f -name "*.zip" -mtime +$RETENTION_DAYS -exec rm {} \;
-    echo "Old backups cleaned up, older than ${RETENTION_DAYS} days"
+    echo "✅ Old backups cleaned up, older than ${RETENTION_DAYS} days"
 }
 
 echo "SCRIPT STARTED ON ${DATE}"
