@@ -17,7 +17,7 @@ send_telegram() {
 
     zip -q -s 49m -r "${base_name}.zip" "$archive_file"
 
-    for part in ${base_name}.z* ${base_name}.zip; do
+    for part in ${base_name}.z*; do
         if curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
             -F chat_id="$TELEGRAM_CHAT_ID" \
             -F document="@$part" \
@@ -42,6 +42,10 @@ backup_volumes() {
     for volume in $volumes; do
         if [ "$volume" = "backup-service_data" ]; then
             echo "Skipping backup for volume $volume."
+            continue
+        fi
+        if ! docker run --rm -v "$volume":/data alpine sh -c 'ls -A /data | grep . >/dev/null 2>&1'; then
+            echo "Skipping empty volume: $volume"
             continue
         fi
 
