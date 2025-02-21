@@ -48,7 +48,7 @@ backup_volumes() {
 
         BACKUP_FILE="${BACKUP_DIR}/${volume}.zip"
 
-        docker run --rm -v "$volume":/volume/$volume/_data -v backup-service_data:/backup alpine:latest \
+        docker run --rm -v "$volume":/volume/$volume/_data -v backup-service_data:/backup volume_backup \
             /bin/sh -c "cd /volume && zip -r /backup/$(basename "$BACKUP_FILE") ."
 
         if [ ! -f "$BACKUP_FILE" ]; then
