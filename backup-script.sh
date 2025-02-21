@@ -4,17 +4,19 @@ BACKUP_DIR="/backups"
 mkdir -p "$BACKUP_DIR"
 
 DATE=$(date +"%Y-%m-%d_%H-%M-%S")
-RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-7}
+RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
+
+# Check if Telegram credentials are set
+if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+    echo "❌ Telegram bot token or chat ID is missing. Exiting."
+    exit 1
+fi
 
 send_telegram() {
     local archive_file=$1
     local base_name="backup_$(date +%Y-%m-%d)"
 
-    if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
-        echo "Telegram bot token or chat ID is missing. Skipping."
-        return
-    fi
-
+    # Create zip archive quietly with file splitting
     zip -q -s 49m -r "${base_name}.zip" "$archive_file"
 
     for part in ${base_name}.z* ${base_name}.zip; do
@@ -24,12 +26,13 @@ send_telegram() {
             -F caption="$(basename "$part")" \
             ${TELEGRAM_THREAD_ID:+-F message_thread_id="$TELEGRAM_THREAD_ID"} > /dev/null; then
             rm -f "$part"
+            echo "✅ Backup $part sent to Telegram."
         else
             echo "❌ Failed to send $part!"
+            # Optionally, stop the script if sending fails
+            # exit 1
         fi
     done
-
-    echo "✅ Backup sent to Telegram."
 }
 
 backup_volumes() {
@@ -38,6 +41,7 @@ backup_volumes() {
     volumes=$(docker volume ls -q)
     ARCHIVE_FILE="${BACKUP_DIR}/Backup_${DATE}.zip"
 
+    # Create empty archive for all backups
     > "$ARCHIVE_FILE"
 
     for volume in $volumes; do
@@ -58,17 +62,18 @@ backup_volumes() {
 
         echo "Backup completed for volume ${volume}: ${BACKUP_FILE}"
 
+        # Append backup to archive
         zip -q "$ARCHIVE_FILE" "$BACKUP_FILE"
     done
 
-    echo "✅ Created archive: $ARCHIVE_FILE"
+    echo "Created archive: $ARCHIVE_FILE"
 
     send_telegram "$ARCHIVE_FILE"
 }
 
 cleanup_old_backups() {
     find "$BACKUP_DIR" -type f -name "*.zip" -mtime +$RETENTION_DAYS -exec rm {} \;
-    echo "✅ Old backups cleaned up, older than ${RETENTION_DAYS} days"
+    echo "Old backups cleaned up, older than ${RETENTION_DAYS} days"
 }
 
 echo "SCRIPT STARTED ON ${DATE}"
