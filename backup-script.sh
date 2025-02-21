@@ -6,7 +6,6 @@ mkdir -p "$BACKUP_DIR"
 DATE=$(date +"%Y-%m-%d_%H-%M-%S")
 RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
 
-# Check if Telegram credentials are set
 if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
     echo "❌ Telegram bot token or chat ID is missing. Exiting."
     exit 1
@@ -16,7 +15,6 @@ send_telegram() {
     local archive_file=$1
     local base_name="backup_$(date +%Y-%m-%d)"
 
-    # Create zip archive quietly with file splitting
     zip -q -s 49m -r "${base_name}.zip" "$archive_file"
 
     for part in ${base_name}.z* ${base_name}.zip; do
@@ -41,9 +39,6 @@ backup_volumes() {
     volumes=$(docker volume ls -q)
     ARCHIVE_FILE="${BACKUP_DIR}/Backup_${DATE}.zip"
 
-    # Create empty archive for all backups
-    > "$ARCHIVE_FILE"
-
     for volume in $volumes; do
         if [ "$volume" = "backup-service_data" ]; then
             echo "Skipping backup for volume $volume."
@@ -62,20 +57,19 @@ backup_volumes() {
 
         echo "Backup completed for volume ${volume}: ${BACKUP_FILE}"
 
-        # Append backup to archive
-        zip -q "$ARCHIVE_FILE" "$BACKUP_FILE"
+        zip -r -q "$ARCHIVE_FILE" "$BACKUP_FILE"
     done
 
-    echo "Created archive: $ARCHIVE_FILE"
+    echo "📦 Created archive: $ARCHIVE_FILE"
 
     send_telegram "$ARCHIVE_FILE"
 }
 
 cleanup_old_backups() {
     find "$BACKUP_DIR" -type f -name "*.zip" -mtime +$RETENTION_DAYS -exec rm {} \;
-    echo "Old backups cleaned up, older than ${RETENTION_DAYS} days"
+    echo "🗑 Old backups cleaned up, older than ${RETENTION_DAYS} days"
 }
 
-echo "SCRIPT STARTED ON ${DATE}"
+echo "🟢 SCRIPT STARTED ON ${DATE}"
 backup_volumes
 cleanup_old_backups
