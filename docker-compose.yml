@@ -2,6 +2,7 @@ services:
   volume_backup:
     build: .
     pull_policy: build
+    image: volume_backup
     container_name: volume_backup
     restart: unless-stopped
     environment:
