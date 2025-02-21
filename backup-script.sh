@@ -8,79 +8,69 @@ RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-14}
 
 send_telegram() {
     local archive_file=$1
-    local max_size=$((49 * 1024 * 1024))  # 49MB max per part
-    local base_name=$DATE
+    local base_name="backup_$(date +%Y-%m-%d)"
 
     if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
         echo "Telegram bot token or chat ID is missing. Skipping."
         return
     fi
 
-    file_size=$(wc -c < "$archive_file")
+    zip -s 49m -r "${base_name}.zip" "$archive_file"
 
-    if [ "$file_size" -gt "$max_size" ]; then
-        split -b $max_size -d --additional-suffix=".$(basename "$archive_file")" "$archive_file" "split_part_"
-
-        for part in split_part_*."$(basename "$archive_file")"; do
-            if curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
-                -F chat_id="$TELEGRAM_CHAT_ID" \
-                -F document="@$part" \
-                -F caption="📌 ${base_name}-$(basename "$part")" \
-                ${TELEGRAM_THREAD_ID:+-F message_thread_id="$TELEGRAM_THREAD_ID"} > /dev/null; then
-                rm -f "$part"
-            else
-                echo "Failed to send $part!"
-            fi
-        done
-    else
-        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+    for part in ${base_name}.z* ${base_name}.zip; do
+        if curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
             -F chat_id="$TELEGRAM_CHAT_ID" \
-            -F document="@$archive_file" \
-            -F caption="📌 ${base_name}" \
-            ${TELEGRAM_THREAD_ID:+-F message_thread_id="$TELEGRAM_THREAD_ID"} > /dev/null
-    fi
+            -F document="@$part" \
+            -F caption="${base_name} $(basename "$part")" \
+            ${TELEGRAM_THREAD_ID:+-F message_thread_id="$TELEGRAM_THREAD_ID"} > /dev/null; then
+            rm -f "$part"
+        else
+            echo "❌ Failed to send $part!"
+        fi
+    done
 
-    echo "Backup sent to Telegram."
+    echo "✅ Backup sent to Telegram."
 }
+
 
 
 backup_volumes() {
     echo "Taking backups..."
 
     volumes=$(docker volume ls -q)
-    ARCHIVE_FILE="${BACKUP_DIR}/Backup_${DATE}.tar"
-    
+    ARCHIVE_FILE="${BACKUP_DIR}/Backup_${DATE}.zip"
+
     for volume in $volumes; do
         if [ "$volume" = "backup-service_data" ]; then
-            echo "skipping backup for volume $volume."
+            echo "Skipping backup for volume $volume."
             continue
         fi
 
-        BACKUP_FILE="${BACKUP_DIR}/${volume}.tar.gz"
-        
+        BACKUP_FILE="${BACKUP_DIR}/${volume}.zip"
+
         docker run --rm -v "$volume":/volume/$volume/_data -v backup-service_data:/backup alpine:latest \
-            /bin/sh -c "cd /volume && tar -czf /backup/$(basename "$BACKUP_FILE") ."
+            /bin/sh -c "cd /volume && zip -r /backup/$(basename "$BACKUP_FILE") ."
 
         if [ ! -f "$BACKUP_FILE" ]; then
-            echo "backup file $BACKUP_FILE was not created. Skipping this volume."
+            echo "Backup file $BACKUP_FILE was not created. Skipping this volume."
             continue
         fi
 
-        echo "backup completed for volume ${volume}: ${BACKUP_FILE}"
+        echo "Backup completed for volume ${volume}: ${BACKUP_FILE}"
 
-        tar -rf "$ARCHIVE_FILE" -C "$BACKUP_DIR" "$(basename "$BACKUP_FILE")"
+        zip -r "$ARCHIVE_FILE" "$BACKUP_FILE"
     done
 
-    gzip "$ARCHIVE_FILE"
-    echo "compressed $ARCHIVE_FILE to ${ARCHIVE_FILE}.gz"
+    echo "Created archive: $ARCHIVE_FILE"
 
-    send_telegram "${ARCHIVE_FILE}.gz"
+    send_telegram "$ARCHIVE_FILE"
 }
 
 cleanup_old_backups() {
-    find "$BACKUP_DIR" -type f -name "*.tar.gz" -mtime +$RETENTION_DAYS -exec rm {} \;
+    find "$BACKUP_DIR" -type f -name "*.zip" -mtime +$RETENTION_DAYS -exec rm {} \;
     echo "Old backups cleaned up, older than ${RETENTION_DAYS} days"
 }
+
 
 echo "SCRIPT STARTED ON ${DATE}"
 backup_volumes
