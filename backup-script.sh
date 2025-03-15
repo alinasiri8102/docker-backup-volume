@@ -41,13 +41,14 @@ send_telegram() {
     done
 }
 
-
-
 backup_volumes() {
     echo "Taking backups..."
 
     volumes=$(docker volume ls -q)
     ARCHIVE_FILE="${BACKUP_DIR}/Backup_${DATE}.zip"
+
+    TMP_DIR="${BACKUP_DIR}/tmp_${DATE}"
+    mkdir -p "$TMP_DIR"
 
     for volume in $volumes; do
         if [ "$volume" = "backup-service_data" ]; then
@@ -59,29 +60,35 @@ backup_volumes() {
             continue
         fi
 
-        BACKUP_FILE="${BACKUP_DIR}/${volume}.zip"
-
-        docker run --rm -v "$volume":/data -v backup-service_data:/backup volume_backup \
-            /bin/sh -c "
-                mkdir -p /backup/${volume}/_data && \
-                cp -a /data/. /backup/${volume}/_data/ && \
-                cd /backup && zip -q -r /backup/$(basename "$BACKUP_FILE") ${volume} && \
-                rm -rf /backup/${volume}
+        echo "Creating backup for volume: $volume"
+        
+        docker run --rm \
+            -v "$volume":/source_data \
+            -v "$TMP_DIR":/backup_dir \
+            alpine sh -c "
+                mkdir -p /backup_dir/$volume/_data && \
+                cp -a /source_data/. /backup_dir/$volume/_data/
             "
-
-        if [ ! -f "$BACKUP_FILE" ]; then
-            echo "Backup file $BACKUP_FILE was not created. Skipping this volume."
+        
+        if [ ! -d "$TMP_DIR/$volume/_data" ]; then
+            echo "Failed to create backup structure for $volume. Skipping."
             continue
         fi
-
-        echo "Backup completed for volume ${volume}: ${BACKUP_FILE}"
-
-        zip -r -q "$ARCHIVE_FILE" "$BACKUP_FILE"
+        
+        echo "Backup structure created for volume: $volume"
     done
 
-    echo "📦 Created archive: $ARCHIVE_FILE"
-
-    send_telegram "$ARCHIVE_FILE"
+    echo "Creating final archive..."
+    (cd "$TMP_DIR" && zip -r -q "$ARCHIVE_FILE" .)
+    
+    if [ -f "$ARCHIVE_FILE" ]; then
+        echo "📦 Created archive: $ARCHIVE_FILE"
+        rm -rf "$TMP_DIR"
+        
+        send_telegram "$ARCHIVE_FILE"
+    else
+        echo "❌ Failed to create archive!"
+    fi
 }
 
 cleanup_old_backups() {
