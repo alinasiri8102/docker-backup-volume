@@ -78,7 +78,14 @@ backup_volumes() {
     done
 
     # Create final archive with proper structure
-    cd "$TEMP_DIR" && zip -r -q "$ARCHIVE_FILE" .
+    (cd "$TEMP_DIR" && zip -r -q "$ARCHIVE_FILE" .)
+    
+    # Check if archive was created successfully
+    if [ ! -f "$ARCHIVE_FILE" ]; then
+        echo "❌ Failed to create archive file"
+        rm -rf "$TEMP_DIR"
+        exit 1
+    fi
     
     # Cleanup temporary directory
     rm -rf "$TEMP_DIR"
