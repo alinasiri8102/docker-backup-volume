@@ -62,7 +62,12 @@ backup_volumes() {
         BACKUP_FILE="${BACKUP_DIR}/${volume}.zip"
 
         docker run --rm -v "$volume":/data -v backup-service_data:/backup volume_backup \
-            /bin/sh -c "cd /data && mkdir -p /backup/${volume}/_data && cp -r . /backup/${volume}/_data/ && cd /backup && zip -q -r $(basename "$BACKUP_FILE") ${volume}"
+            /bin/sh -c "
+                mkdir -p /backup/${volume}/_data && \
+                cp -a /data/. /backup/${volume}/_data/ && \
+                cd /backup && zip -q -r /backup/$(basename "$BACKUP_FILE") ${volume} && \
+                rm -rf /backup/${volume}
+            "
 
         if [ ! -f "$BACKUP_FILE" ]; then
             echo "Backup file $BACKUP_FILE was not created. Skipping this volume."
