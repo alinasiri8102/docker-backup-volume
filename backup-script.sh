@@ -19,36 +19,28 @@ send_telegram() {
 
     if [ "$FILE_SIZE" -ge $((49 * 1024 * 1024)) ]; then
         echo "📂 Splitting backup because it's larger than 49MB"
-        split -b 49M "$archive_file" "${base_name}.part"
-        for part in ${base_name}.part*; do
-            [ -f "$part" ] || continue
-
-            if curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
-                -F chat_id="$TELEGRAM_CHAT_ID" \
-                -F document="@$part" \
-                -F caption="$(basename "$part")" \
-                ${TELEGRAM_THREAD_ID:+-F message_thread_id="$TELEGRAM_THREAD_ID"} > /dev/null; then
-                rm -f "$part"
-                echo "✅ Backup $part sent to Telegram."
-            else
-                echo "❌ Failed to send $part!"
-            fi
-        done
+        zip -q -s 49m -r "${base_name}.zip" "$archive_file"
     else
         echo "📂 Single-part backup, no split needed"
-        cp "$archive_file" "${base_name}.zip"
+        zip -q -r "${base_name}.zip" "$archive_file"
+    fi
+
+    for part in ${base_name}.zip ${base_name}.z*; do
+        [ -f "$part" ] || continue  
+
         if curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
             -F chat_id="$TELEGRAM_CHAT_ID" \
-            -F document="@${base_name}.zip" \
-            -F caption="$(basename "${base_name}.zip")" \
+            -F document="@$part" \
+            -F caption="$(basename "$part")" \
             ${TELEGRAM_THREAD_ID:+-F message_thread_id="$TELEGRAM_THREAD_ID"} > /dev/null; then
-            rm -f "${base_name}.zip"
-            echo "✅ Backup ${base_name}.zip sent to Telegram."
+            rm -f "$part"
+            echo "✅ Backup $part sent to Telegram."
         else
-            echo "❌ Failed to send ${base_name}.zip!"
+            echo "❌ Failed to send $part!"
         fi
-    fi
+    done
 }
+
 
 
 backup_volumes() {
