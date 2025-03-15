@@ -19,10 +19,10 @@ send_telegram() {
 
     if [ "$FILE_SIZE" -ge $((49 * 1024 * 1024)) ]; then
         echo "📂 Splitting backup because it's larger than 49MB"
-        zip -q -s 49m -r "${base_name}.zip" "$archive_file"
+        split -b 49M "$archive_file" "${base_name}.part"
     else
         echo "📂 Single-part backup, no split needed"
-        zip -q -r "${base_name}.zip" "$archive_file"
+        cp "$archive_file" "${base_name}.zip"
     fi
 
     for part in ${base_name}.zip ${base_name}.z*; do
@@ -41,6 +41,7 @@ send_telegram() {
     done
 }
 
+
 backup_volumes() {
     echo "Taking backups..."
 
@@ -57,30 +58,25 @@ backup_volumes() {
             continue
         fi
 
-        echo "Backing up volume: $volume"
+        BACKUP_FILE="${BACKUP_DIR}/${volume}.zip"
 
         docker run --rm -v "$volume":/data -v backup-service_data:/backup volume_backup \
-            /bin/sh -c "cd /data && zip -q -r /backup/${volume}.zip ."
+            /bin/sh -c "cd /data && zip -q -r /backup/$(basename "$BACKUP_FILE") ."
 
-        if [ ! -f "${BACKUP_DIR}/${volume}.zip" ]; then
-            echo "Backup for $volume failed. Skipping."
+        if [ ! -f "$BACKUP_FILE" ]; then
+            echo "Backup file $BACKUP_FILE was not created. Skipping this volume."
             continue
         fi
 
-        echo "Adding ${volume}.zip to final archive..."
-        unzip -q "${BACKUP_DIR}/${volume}.zip" -d "${BACKUP_DIR}/temp_${volume}"
-        rm -f "${BACKUP_DIR}/${volume}.zip"
-    done
+        echo "Backup completed for volume ${volume}: ${BACKUP_FILE}"
 
-    cd "$BACKUP_DIR"
-    zip -q -r "$ARCHIVE_FILE" temp_*/
-    rm -rf temp_*
+        zip -r -q "$ARCHIVE_FILE" "$BACKUP_FILE"
+    done
 
     echo "📦 Created archive: $ARCHIVE_FILE"
 
     send_telegram "$ARCHIVE_FILE"
 }
-
 
 cleanup_old_backups() {
     find "$BACKUP_DIR" -type f -name "*.zip" -mtime +$RETENTION_DAYS -exec rm {} \;
