@@ -41,8 +41,6 @@ send_telegram() {
     done
 }
 
-}
-
 backup_volumes() {
     echo "Taking backups..."
 
