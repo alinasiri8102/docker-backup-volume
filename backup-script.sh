@@ -19,7 +19,7 @@ send_telegram() {
     if ! unzip -t "$archive_file" > /dev/null; then
         echo "❌ Zip file integrity check failed!"
         return 1
-    }
+    fi
 
     zip -q -s 49m -r "${base_name}.zip" "$archive_file"
 
