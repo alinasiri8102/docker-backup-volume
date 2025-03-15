@@ -57,25 +57,30 @@ backup_volumes() {
             continue
         fi
 
-        BACKUP_FILE="${BACKUP_DIR}/${volume}.zip"
+        echo "Backing up volume: $volume"
 
         docker run --rm -v "$volume":/data -v backup-service_data:/backup volume_backup \
-            /bin/sh -c "cd /data && zip -q -r /backup/$(basename "$BACKUP_FILE") ."
+            /bin/sh -c "cd /data && zip -q -r /backup/${volume}.zip ."
 
-        if [ ! -f "$BACKUP_FILE" ]; then
-            echo "Backup file $BACKUP_FILE was not created. Skipping this volume."
+        if [ ! -f "${BACKUP_DIR}/${volume}.zip" ]; then
+            echo "Backup for $volume failed. Skipping."
             continue
         fi
 
-        echo "Backup completed for volume ${volume}: ${BACKUP_FILE}"
-
-        zip -r -q "$ARCHIVE_FILE" "$BACKUP_FILE"
+        echo "Adding ${volume}.zip to final archive..."
+        unzip -q "${BACKUP_DIR}/${volume}.zip" -d "${BACKUP_DIR}/temp_${volume}"
+        rm -f "${BACKUP_DIR}/${volume}.zip"
     done
+
+    cd "$BACKUP_DIR"
+    zip -q -r "$ARCHIVE_FILE" temp_*/
+    rm -rf temp_*
 
     echo "📦 Created archive: $ARCHIVE_FILE"
 
     send_telegram "$ARCHIVE_FILE"
 }
+
 
 cleanup_old_backups() {
     find "$BACKUP_DIR" -type f -name "*.zip" -mtime +$RETENTION_DAYS -exec rm {} \;
