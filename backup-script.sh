@@ -15,6 +15,12 @@ send_telegram() {
     local archive_file=$1
     local base_name="backup_$(date +%Y-%m-%d)"
 
+    # Verify zip file integrity before sending
+    if ! unzip -t "$archive_file" > /dev/null; then
+        echo "❌ Zip file integrity check failed!"
+        return 1
+    }
+
     zip -q -s 49m -r "${base_name}.zip" "$archive_file"
 
     # Check if the file was split into parts
@@ -52,6 +58,8 @@ backup_volumes() {
 
     volumes=$(docker volume ls -q)
     ARCHIVE_FILE="${BACKUP_DIR}/Backup_${DATE}.zip"
+    TEMP_DIR="${BACKUP_DIR}/temp_${DATE}"
+    mkdir -p "$TEMP_DIR"
 
     for volume in $volumes; do
         if [ "$volume" = "backup-service_data" ]; then
@@ -63,23 +71,30 @@ backup_volumes() {
             continue
         fi
 
-        BACKUP_FILE="${BACKUP_DIR}/${volume}.zip"
+        echo "Backing up volume: $volume"
+        VOLUME_TEMP_DIR="$TEMP_DIR/$volume"
+        mkdir -p "$VOLUME_TEMP_DIR"
 
-        docker run --rm -v "$volume":/data -v backup-service_data:/backup volume_backup \
-            /bin/sh -c "cd /data && zip -q -r /backup/$(basename "$BACKUP_FILE") ."
-
-        if [ ! -f "$BACKUP_FILE" ]; then
-            echo "Backup file $BACKUP_FILE was not created. Skipping this volume."
+        # Copy volume data to temp directory
+        if ! docker run --rm -v "$volume":/data -v "$VOLUME_TEMP_DIR":/backup alpine \
+            sh -c "cp -r /data/. /backup/"; then
+            echo "❌ Failed to copy data from volume $volume"
             continue
         fi
-
-        echo "Backup completed for volume ${volume}: ${BACKUP_FILE}"
-
-        zip -r -q "$ARCHIVE_FILE" "$BACKUP_FILE"
     done
 
-    echo "📦 Created archive: $ARCHIVE_FILE"
+    # Create a single zip archive from all volume data
+    cd "$TEMP_DIR" || exit 1
+    if ! zip -r -q "$ARCHIVE_FILE" .; then
+        echo "❌ Failed to create zip archive"
+        rm -rf "$TEMP_DIR"
+        exit 1
+    fi
 
+    # Clean up temp directory
+    rm -rf "$TEMP_DIR"
+
+    echo "📦 Created archive: $ARCHIVE_FILE"
     send_telegram "$ARCHIVE_FILE"
 }
 
