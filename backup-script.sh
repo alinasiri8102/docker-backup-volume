@@ -52,11 +52,6 @@ backup_volumes() {
 
     volumes=$(docker volume ls -q)
     ARCHIVE_FILE="${BACKUP_DIR}/Backup_${DATE}.zip"
-    TEMP_DIR="${BACKUP_DIR}/temp"
-    
-    # Create temporary directory for structuring backups
-    rm -rf "$TEMP_DIR"
-    mkdir -p "$TEMP_DIR"
 
     for volume in $volumes; do
         if [ "$volume" = "backup-service_data" ]; then
@@ -68,42 +63,22 @@ backup_volumes() {
             continue
         fi
 
-        # Create directory structure similar to Docker's
-        mkdir -p "${TEMP_DIR}/${volume}/_data"
+        BACKUP_FILE="${BACKUP_DIR}/${volume}.zip"
 
-        # Copy data with Docker's structure
-        if ! docker run --rm -v "$volume":/data -v "${TEMP_DIR}/${volume}/_data":/backup alpine \
-            /bin/sh -c "cp -r /data/. /backup/"; then
-            echo "❌ Failed to copy data from volume ${volume}"
-            rm -rf "$TEMP_DIR"
-            exit 1
+        docker run --rm -v "$volume":/data -v backup-service_data:/backup volume_backup \
+            /bin/sh -c "cd /data && zip -q -r /backup/$(basename "$BACKUP_FILE") ."
+
+        if [ ! -f "$BACKUP_FILE" ]; then
+            echo "Backup file $BACKUP_FILE was not created. Skipping this volume."
+            continue
         fi
 
-        # Verify data was copied
-        if [ ! "$(ls -A "${TEMP_DIR}/${volume}/_data")" ]; then
-            echo "❌ No data was copied from volume ${volume}"
-            rm -rf "$TEMP_DIR"
-            exit 1
-        fi
+        echo "Backup completed for volume ${volume}: ${BACKUP_FILE}"
 
-        echo "✅ Backup completed for volume ${volume}"
+        zip -r -q "$ARCHIVE_FILE" "$BACKUP_FILE"
     done
 
-    # Create final archive with proper structure
-    echo "Creating zip archive..."
-    zip -r -q "$ARCHIVE_FILE" -C "$TEMP_DIR" .
-    
-    # Check if archive was created successfully and has content
-    if [ ! -f "$ARCHIVE_FILE" ] || [ ! -s "$ARCHIVE_FILE" ]; then
-        echo "❌ Failed to create archive file or archive is empty"
-        rm -rf "$TEMP_DIR"
-        exit 1
-    fi
-    
-    # Cleanup temporary directory
-    rm -rf "$TEMP_DIR"
-
-    echo "📦 Created archive: $ARCHIVE_FILE ($(du -h "$ARCHIVE_FILE" | cut -f1))"
+    echo "📦 Created archive: $ARCHIVE_FILE"
 
     send_telegram "$ARCHIVE_FILE"
 }
