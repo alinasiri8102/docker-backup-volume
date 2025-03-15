@@ -1,0 +1,25 @@
+services:
+  volume_backup:
+    build: .
+    pull_policy: build
+    image: volume_backup
+    container_name: volume_backup
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - TELEGRAM_THREAD_ID=${TELEGRAM_THREAD_ID}
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE}
+      - BACKUP_RETENTION_DAYS=${BACKUP_RETENTION}
+    volumes:
+      - data:/backups
+      - /var/run/docker.sock:/var/run/docker.sock
+    mem_limit: 100m
+    cpus: "0.2"
+
+    network_mode: host
+
+    command: /bin/sh -c "/bin/sh /backup-script.sh && echo '${BACKUP_SCHEDULE} /bin/sh /backup-script.sh >> /var/log/cron.log 2>&1' > /etc/crontabs/root && crond -f -d 8"
+
+volumes:
+  data:
