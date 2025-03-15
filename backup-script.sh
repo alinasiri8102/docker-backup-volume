@@ -55,6 +55,7 @@ backup_volumes() {
     TEMP_DIR="${BACKUP_DIR}/temp"
     
     # Create temporary directory for structuring backups
+    rm -rf "$TEMP_DIR"
     mkdir -p "$TEMP_DIR"
 
     for volume in $volumes; do
@@ -71,18 +72,30 @@ backup_volumes() {
         mkdir -p "${TEMP_DIR}/${volume}/_data"
 
         # Copy data with Docker's structure
-        docker run --rm -v "$volume":/data -v "${TEMP_DIR}/${volume}/_data":/backup alpine \
-            /bin/sh -c "cp -r /data/. /backup/"
+        if ! docker run --rm -v "$volume":/data -v "${TEMP_DIR}/${volume}/_data":/backup alpine \
+            /bin/sh -c "cp -r /data/. /backup/"; then
+            echo "❌ Failed to copy data from volume ${volume}"
+            rm -rf "$TEMP_DIR"
+            exit 1
+        fi
 
-        echo "Backup completed for volume ${volume}"
+        # Verify data was copied
+        if [ ! "$(ls -A "${TEMP_DIR}/${volume}/_data")" ]; then
+            echo "❌ No data was copied from volume ${volume}"
+            rm -rf "$TEMP_DIR"
+            exit 1
+        fi
+
+        echo "✅ Backup completed for volume ${volume}"
     done
 
     # Create final archive with proper structure
-    (cd "$TEMP_DIR" && zip -r -q "$ARCHIVE_FILE" .)
+    echo "Creating zip archive..."
+    zip -r -q "$ARCHIVE_FILE" -C "$TEMP_DIR" .
     
-    # Check if archive was created successfully
-    if [ ! -f "$ARCHIVE_FILE" ]; then
-        echo "❌ Failed to create archive file"
+    # Check if archive was created successfully and has content
+    if [ ! -f "$ARCHIVE_FILE" ] || [ ! -s "$ARCHIVE_FILE" ]; then
+        echo "❌ Failed to create archive file or archive is empty"
         rm -rf "$TEMP_DIR"
         exit 1
     fi
@@ -90,7 +103,7 @@ backup_volumes() {
     # Cleanup temporary directory
     rm -rf "$TEMP_DIR"
 
-    echo "📦 Created archive: $ARCHIVE_FILE"
+    echo "📦 Created archive: $ARCHIVE_FILE ($(du -h "$ARCHIVE_FILE" | cut -f1))"
 
     send_telegram "$ARCHIVE_FILE"
 }
