@@ -28,7 +28,7 @@ send_telegram() {
     for part in ${base_name}.zip ${base_name}.z*; do
         [ -f "$part" ] || continue  
 
-        if curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+        if curl -s -X POST "${TELEGRAM_URL:-https://api.telegram.org}/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
             -F chat_id="$TELEGRAM_CHAT_ID" \
             -F document="@$part" \
             -F caption="$(basename "$part")" \
